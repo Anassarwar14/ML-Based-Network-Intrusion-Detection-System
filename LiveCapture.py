@@ -48,8 +48,10 @@ def extract_features(pkt):
         src_port = pkt[pkt.transport_layer].srcport if hasattr(pkt, pkt.transport_layer) else '0'
         dst_port = pkt[pkt.transport_layer].dstport if hasattr(pkt, pkt.transport_layer) else '0'
         protocol_type = pkt.transport_layer if hasattr(pkt, 'transport_layer') else 'unknown'
-        service = pkt.highest_layer if hasattr(pkt, 'highest_layer') else 'unknown'
-        flag = pkt.tcp.flags if 'TCP' in pkt else 'N/A'
+        tcp_layer = packet.tcp if hasattr(packet, 'tcp') else None
+        udp_layer = packet.udp if hasattr(packet, 'udp') else None
+        # service = pkt.highest_layer if hasattr(pkt, 'highest_layer') else 'unknown'
+        # flag = pkt.tcp.flags if 'TCP' in pkt else 'N/A'
 
         # Packet size
         src_bytes = int(pkt.length) if hasattr(pkt, 'length') else 0
@@ -61,7 +63,7 @@ def extract_features(pkt):
         land = 1 if src_ip == dst_ip and src_port == dst_port else 0
         wrong_fragment = int(pkt.ip.frag_offset) if hasattr(pkt, 'ip') and hasattr(pkt.ip, 'frag_offset') else 0
         urgent = int(pkt.tcp.urgent_pointer) if hasattr(pkt, 'tcp') and hasattr(pkt.tcp, 'urgent_pointer') else 0
-        logged_in = 1 if protocol_type == 'tcp' and flag == 'SF' else 0  # Example assumption
+        # logged_in = 1 if protocol_type == 'tcp' and flag == 'SF' else 0  # Example assumption
 
         # Attack-specific features (requires tracking over time)
         session = session_data[session_key]
@@ -73,32 +75,62 @@ def extract_features(pkt):
 
         # Error rates (only for TCP)
         if protocol_type == 'tcp':
-            is_error = flag in ['S0', 'S1', 'REJ']
-            session['serror_rate'] = sum(1 for s in session_data.values() if s['count'] and is_error) / session['count']
+            # is_error = flag in ['S0', 'S1', 'REJ']
+            # session['serror_rate'] = sum(1 for s in session_data.values() if s['count'] and is_error) / session['count']
             session['srv_serror_rate'] = session['serror_rate']  # Assuming same for srv
             session['rerror_rate'] = 0  # Placeholder: Would need RST tracking
             session['srv_rerror_rate'] = session['rerror_rate']
 
         # Destination-based tracking
         session['dst_host_count'] += 1
-        session['dst_host_srv_count'] += 1 if service in session else 0
+        # session['dst_host_srv_count'] += 1 if service in session else 0
         session['dst_host_same_srv_rate'] = session['dst_host_srv_count'] / session['dst_host_count']
         session['dst_host_diff_srv_rate'] = 1 - session['dst_host_same_srv_rate']
         session['dst_host_same_src_port_rate'] = 0  # Placeholder: Requires tracking ports
         session['dst_host_srv_diff_host_rate'] = 0  # Placeholder
 
+
+        def get_flag_symbol(tcp):
+            flags = tcp.flags
+            flag_bits = {
+                '0x0002': 'S0',  # SYN
+                '0x0010': 'REJ', # ACK only, often rejected
+                '0x0012': 'SF',  # SYN+ACK
+            }
+            return flag_bits.get(flags, 'OTH')
+
+        def map_service(pkt):
+            port = pkt.tcp.dstport if tcp_layer else (pkt.udp.dstport if udp_layer else None)
+            if port:
+                common_services = {
+                    '80': 'http',
+                    '443': 'https',
+                    '21': 'ftp',
+                    '22': 'ssh',
+                    '23': 'telnet',
+                    '25': 'smtp',
+                    '53': 'domain',
+                    '110': 'pop_3',
+                    '143': 'imap',
+                    '513': 'remote_job',
+                    '514': 'private',
+                }
+                return common_services.get(str(port), 'private')
+            return 'private'
+
+
         # Construct output
         extracted_data = {
             'duration': time.time(),  # Capture timestamp (for duration calculations)
             'protocol_type': protocol_type,
-            'service': service.lower(),
-            'flag': flag,
+            'service': map_service(packet),
+            'flag': get_flag_symbol(tcp_layer) if tcp_layer else 'OTH',
             'src_bytes': src_bytes,
             'dst_bytes': 0,  # Requires tracking responses
             'land': land,
             'wrong_fragment': wrong_fragment,
             'urgent': urgent,
-            'hot': 0, 'num_failed_logins': 0, 'logged_in': logged_in,
+            'hot': 0, 'num_failed_logins': 0, 'logged_in': 0,
             'num_compromised': 0, 'root_shell': 0, 'su_attempted': 0,
             'num_root': 0, 'num_file_creations': 0, 'num_shells': 0,
             'num_access_files': 0, 'num_outbound_cmds': 0,

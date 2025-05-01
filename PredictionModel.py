@@ -1,16 +1,24 @@
-# Import necessary libraries
-import pandas as pd
+# data handling
+import pandas as pd 
 import numpy as np
+
+# ML
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, RobustScaler, OneHotEncoder
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.decomposition import PCA
 from sklearn.metrics import classification_report, confusion_matrix
+
+# model persistence
 import joblib
+
+# visualization
 from rich.console import Console
 from rich.progress import Progress
 import warnings
+
+#for server communication 
 import socket
 import json
 
@@ -61,9 +69,10 @@ def preprocess(dataframe, is_train=True):
 
 # Train and save the model
 def train_and_save_model(data_path):
-    console.log("Loading data from file...")
+    console.log("Loading dataset...")
     columns = [
-        'duration', 'protocol_type', 'service', 'flag', 'src_bytes', 'dst_bytes', 'land',
+        'duration', 
+        'protocol_type', 'service', 'flag', 'src_bytes', 'dst_bytes', 'land',
         'wrong_fragment', 'urgent', 'hot', 'num_failed_logins', 'logged_in',
         'num_compromised', 'root_shell', 'su_attempted', 'num_root', 'num_file_creations',
         'num_shells', 'num_access_files', 'num_outbound_cmds', 'is_host_login',
@@ -73,6 +82,7 @@ def train_and_save_model(data_path):
         'dst_host_same_srv_rate', 'dst_host_diff_srv_rate', 'dst_host_same_src_port_rate',
         'dst_host_srv_diff_host_rate', 'dst_host_serror_rate', 'dst_host_srv_serror_rate',
         'dst_host_rerror_rate', 'dst_host_srv_rerror_rate', 'outcome', 'level'
+        # outcome 1 means attack, outcome 0 meeans normal
     ]
 
     data = pd.read_csv(data_path, names=columns)
@@ -135,8 +145,6 @@ def predict(input_data):
     return {"Random Forest": rf_prediction, "Decision Tree": dt_prediction}
 
 
-
-
 def handle_live_data():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind((HOST, PORT))
@@ -159,8 +167,8 @@ def handle_live_data():
                 rf_prediction = rf_model.predict(test_data)[0]
                 dt_prediction = dt_model.predict(test_data)[0]
 
-                rf_label = "✅ Normal traffic" if rf_prediction == 0 else "⚠️ ALERT: Attack detected!"
-                dt_label = "✅ Normal traffic" if dt_prediction == 0 else "⚠️ ALERT: Attack detected!"
+                rf_label = "Normal traffic" if rf_prediction == 0 else "ALERT: Attack detected!!!"
+                dt_label = "Normal traffic" if dt_prediction == 0 else "ALERT: Attack detected!!!"
                 console.print(f"[green]Random Forest Prediction:[/green] {rf_label}")
                 console.print(f"[green]Decision Tree Prediction:[/green] {dt_label}")
 
@@ -189,6 +197,7 @@ if __name__ == "__main__":
         'dst_host_srv_diff_host_rate': 0.04, 'dst_host_serror_rate': 0.03,
         'dst_host_srv_serror_rate': 0.01, 'dst_host_rerror_rate': 0.0,
         'dst_host_srv_rerror_rate': 0.01},
+
         {'duration': 0, 'protocol_type': 'tcp', 'service': 'private', 'flag': 'S0',
         'src_bytes': 0, 'dst_bytes': 0, 'land': 0, 'wrong_fragment': 0, 'urgent': 0,
         'hot': 0, 'num_failed_logins': 0, 'logged_in': 0, 'num_compromised': 0, 'root_shell': 0,
@@ -202,6 +211,7 @@ if __name__ == "__main__":
         'dst_host_srv_diff_host_rate': 0.00, 'dst_host_serror_rate': 1.00,
         'dst_host_srv_serror_rate': 1.00, 'dst_host_rerror_rate': 0.00,
         'dst_host_srv_rerror_rate': 0.00},
+
         {'duration': 0, 'protocol_type': 'tcp', 'service': 'remote_job', 'flag': 'S0',
         'src_bytes': 0, 'dst_bytes': 0, 'land': 0, 'wrong_fragment': 0, 'urgent': 0,
         'hot': 0, 'num_failed_logins': 0, 'logged_in': 0, 'num_compromised': 0, 'root_shell': 0,
@@ -215,6 +225,7 @@ if __name__ == "__main__":
         'dst_host_srv_diff_host_rate': 0.00, 'dst_host_serror_rate': 1.00,
         'dst_host_srv_serror_rate': 1.00, 'dst_host_rerror_rate': 0.00,
         'dst_host_srv_rerror_rate': 0.00},
+
         {'duration': 0, 'protocol_type': 'tcp', 'service': 'private', 'flag': 'S0',
         'src_bytes': 0, 'dst_bytes': 0, 'land': 0, 'wrong_fragment': 0, 'urgent': 0,
         'hot': 0, 'num_failed_logins': 0, 'logged_in': 0, 'num_compromised': 0, 'root_shell': 0,
@@ -228,6 +239,7 @@ if __name__ == "__main__":
         'dst_host_srv_diff_host_rate': 0.00, 'dst_host_serror_rate': 1.00,
         'dst_host_srv_serror_rate': 1.00, 'dst_host_rerror_rate': 0.00,
         'dst_host_srv_rerror_rate': 0.00},
+
         {'duration': 0, 'protocol_type': 'tcp', 'service': 'private', 'flag': 'REJ',
         'src_bytes': 0, 'dst_bytes': 0, 'land': 0, 'wrong_fragment': 0, 'urgent': 0,
         'hot': 0, 'num_failed_logins': 0, 'logged_in': 0, 'num_compromised': 0, 'root_shell': 0,
@@ -241,6 +253,7 @@ if __name__ == "__main__":
         'dst_host_srv_diff_host_rate': 0.00, 'dst_host_serror_rate': 0.00,
         'dst_host_srv_serror_rate': 0.00, 'dst_host_rerror_rate': 1.00,
         'dst_host_srv_rerror_rate': 1.00},
+
         {'duration': 0, 'protocol_type': 'tcp', 'service': 'private', 'flag': 'S0',
         'src_bytes': 0, 'dst_bytes': 0, 'land': 0, 'wrong_fragment': 0, 'urgent': 0,
         'hot': 0, 'num_failed_logins': 0, 'logged_in': 0, 'num_compromised': 0, 'root_shell': 0,
@@ -254,6 +267,7 @@ if __name__ == "__main__":
         'dst_host_srv_diff_host_rate': 0.00, 'dst_host_serror_rate': 1.00,
         'dst_host_srv_serror_rate': 1.00, 'dst_host_rerror_rate': 0.00,
         'dst_host_srv_rerror_rate': 0.00},
+
         {'duration': 0, 'protocol_type': 'tcp', 'service': 'http', 'flag': 'SF',
         'src_bytes': 287, 'dst_bytes': 2251, 'land': 0, 'wrong_fragment': 0, 'urgent': 0,
         'hot': 0, 'num_failed_logins': 0, 'logged_in': 1, 'num_compromised': 0, 'root_shell': 0,
